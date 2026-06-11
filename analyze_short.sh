@@ -87,18 +87,28 @@ if [ "$DUR" -gt 1 ]; then
 fi
 
 # 4. 文字起こし（ローカルWhisper・無料）
+#    txt = 読みやすい全文 / tsv = セグメント単位の開始終了ミリ秒つき（冒頭2秒の機械判定に使う）
+#    whisper の --output_format は単一値しか取れないため all を指定して両方生成する。
 echo "文字起こし中（モデル: ${MODEL}）..."
 whisper "$VIDEO" --language Japanese --model "$MODEL" \
-  --output_format txt --output_dir "$OUT" --verbose False >/dev/null 2>&1 || {
+  --output_format all \
+  --output_dir "$OUT" --verbose False >/dev/null 2>&1 || {
   echo "警告: 文字起こしに失敗しました。モデルやファイルを確認してください。" >&2
 }
 # 文字起こしファイル名を統一
 if [ -f "$OUT/$NAME.txt" ]; then
   mv -f "$OUT/$NAME.txt" "$OUT/transcript.txt"
 fi
+# タイムスタンプ付き（TSV: start(ms) end(ms) text）を統一名にする
+if [ -f "$OUT/$NAME.tsv" ]; then
+  mv -f "$OUT/$NAME.tsv" "$OUT/transcript_timed.tsv"
+fi
+# 不要な中間フォーマット（vtt/srt/json）は削除
+rm -f "$OUT/$NAME.vtt" "$OUT/$NAME.srt" "$OUT/$NAME.json"
 
 echo ""
 echo "完了。次の素材を採点プロンプトに渡してください:"
 echo "  - メタ情報/品質  : $INFO"
 echo "  - 文字起こし      : $OUT/transcript.txt"
+echo "  - 時刻つき文字起こし: $OUT/transcript_timed.tsv （冒頭2秒の判定用）"
 echo "  - 静止画(テロップ): $FRAMES/"
